@@ -544,18 +544,68 @@
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbySow80SPFXXFKn6fHeChY7j0bcBFk4hTeVWJY8emHdrprggnNH_I3pIUFqI8e2LSSAIQ/exec';
+                const API_URL = 'IHRE_EIGENE_WEBAPP_URL_HIER_EINFÜGEN'; // ERGÄNZEN: Ihre Apps Script URL hier eintragen!
+        
+        // Debug-Funktion
+        async function testConnection() {
+            console.log('=== VERBINDUNGSTEST ===');
+            console.log('API URL:', API_URL);
+            try {
+                const testUrl = API_URL + '?action=list';
+                console.log('Sende GET an:', testUrl);
+                const response = await fetch(testUrl);
+                console.log('Response Status:', response.status, response.statusText);
+                console.log('Response Headers:', [...response.headers.entries()]);
+                
+                const text = await response.text();
+                console.log('Response Text (erste 500 Zeichen):', text.substring(0, 500));
+                
+                try {
+                    const data = JSON.parse(text);
+                    console.log('Erfolgreich geparst! Daten:', data);
+                    if (Array.isArray(data)) {
+                        console.log(`✅ ${data.length} Aufträge geladen`);
+                    } else {
+                        console.log('⚠️ Daten sind kein Array:', typeof data);
+                    }
+                } catch (parseError) {
+                    console.error('❌ JSON Parse Fehler:', parseError);
+                    console.log('Text war:', text);
+                }
+            } catch (error) {
+                console.error('❌ Fetch Fehler:', error);
+                // Fallback: Test ohne CORS
+                console.log('Teste mit no-cors mode...');
+                try {
+                    const response = await fetch(API_URL + '?action=list', { mode: 'no-cors' });
+                    console.log('no-cors Response:', response);
+                } catch (noCorsError) {
+                    console.error('Auch no-cors fehlgeschlagen:', noCorsError);
+                }
+            }
+            console.log('=== ENDE VERBINDUNGSTEST ===');
+        }
+        
         let ordersDatabase = [];
         const currentYear = new Date().getFullYear();
         let currentVorgangNumber = 1;
         
         document.addEventListener('DOMContentLoaded', async function() {
+            console.log('DOM geladen - starte Initialisierung');
+            
+            // Teste zuerst die Verbindung
+            await testConnection();
+            
+            // Dann Daten laden
             await loadOrdersList();
+            
+            // Initialisiere Formular
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('entry-date').value = today;
             calculateNextVorgangNumber();
             generateVorgangNumber();
             
+            // Event Listener
             document.getElementById('add-row-btn').addEventListener('click', function() {
                 const tbody = document.getElementById('table-body');
                 const row = tbody.insertRow();
@@ -567,15 +617,16 @@
             
             document.getElementById('work-todo').addEventListener('blur', generateTaskCheckboxes);
             
-            document.getElementById('save-only-btn').addEventListener('click', function() {
+            document.getElementById('save-only-btn').addEventListener('click', async function() {
+                console.log('Speichern-Button geklickt');
                 const data = collectOrderData();
                 if (!validateOrderData(data)) return;
                 
                 const isUpdate = document.getElementById('order-id').value !== '';
-                saveOrderToDatabase(data);
+                console.log(isUpdate ? 'Update' : 'Neuer Auftrag', data);
                 
-                // Datenbank neu laden
-                ordersDatabase = JSON.parse(localStorage.getItem('ibgOrdersDatabase')) || [];
+                await saveOrderToDatabase(data);
+                await loadOrdersList();
                 
                 if (isUpdate) {
                     alert('Auftrag wurde erfolgreich aktualisiert!');
@@ -590,14 +641,13 @@
             });
             
             document.getElementById('save-pdf-btn').addEventListener('click', async function() {
+                console.log('PDF-Button geklickt');
                 const data = collectOrderData();
                 if (!validateOrderData(data)) return;
                 
                 const isUpdate = document.getElementById('order-id').value !== '';
-                saveOrderToDatabase(data);
-                
-                // Datenbank neu laden
-                ordersDatabase = JSON.parse(localStorage.getItem('ibgOrdersDatabase')) || [];
+                await saveOrderToDatabase(data);
+                await loadOrdersList();
                 
                 await generatePDF(data);
                 
@@ -627,7 +677,7 @@
             });
             
             document.getElementById('reset-btn').addEventListener('click', function() {
-                if (confirm('Zurücksetzen?')) {
+                if (confirm('Wirklich alle Eingaben zurücksetzen?')) {
                     resetForm();
                     document.getElementById('entry-date').value = today;
                     generateVorgangNumber();
@@ -653,6 +703,8 @@
                 });
                 renderOrdersTable(filtered);
             });
+            
+            console.log('Initialisierung abgeschlossen');
         });
         
         function calculateNextVorgangNumber() {
@@ -661,11 +713,17 @@
                     .map(o => o.vorgang ? parseInt(o.vorgang.match(/\d+$/)?.[0] || 0) : 0)
                     .filter(n => n > 0);
                 currentVorgangNumber = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+                console.log('Nächste Vorgangsnummer:', currentVorgangNumber, 'aus', nums);
+            } else {
+                console.log('Keine Aufträge, starte mit Nr. 1');
+                currentVorgangNumber = 1;
             }
         }
         
         function generateVorgangNumber() {
-            document.getElementById('vorgang').value = currentYear + '-' + currentVorgangNumber.toString().padStart(3, '0');
+            const vorgang = currentYear + '-' + currentVorgangNumber.toString().padStart(3, '0');
+            document.getElementById('vorgang').value = vorgang;
+            console.log('Generierte Vorgangsnummer:', vorgang);
         }
         
         function generateTaskCheckboxes() {
@@ -729,7 +787,7 @@
             };
             
             // Aufgaben sammeln
-            document.querySelectorAll('#tasks-checklist input[type="checkbox"]').forEach(cb => {
+            document.querySelectorAll('#tasks-checklist input[type="checkbox"]').forEach((cb, index) => {
                 const label = document.querySelector(`label[for="${cb.id}"]`);
                 if (label) {
                     data.workTasks.push({
@@ -738,6 +796,18 @@
                     });
                 }
             });
+            
+            // Falls keine Checkboxen existieren, aus Textarea parsen
+            if (data.workTasks.length === 0 && data.workTodo) {
+                data.workTodo.split('\n').forEach(task => {
+                    if (task.trim()) {
+                        data.workTasks.push({
+                            task: task.trim(),
+                            completed: false
+                        });
+                    }
+                });
+            }
             
             // Status - bestehenden Status übernehmen oder neu initialisieren
             data.status = existingOrder?.status || {
@@ -764,39 +834,156 @@
                 }
             });
             
+            console.log('Gesammelte Daten:', data);
             return data;
         }
         
         function validateOrderData(data) {
-            if (!data.vorgang || !data.customer || !data.subject || !data.name) {
-                alert('Bitte alle Pflichtfelder ausfüllen!');
+            const missing = [];
+            if (!data.vorgang) missing.push('Vorgang');
+            if (!data.customer) missing.push('Kunde');
+            if (!data.subject) missing.push('Betreff');
+            if (!data.name) missing.push('Name');
+            if (!data.errorDescription) missing.push('Fehlerbeschreibung');
+            if (!data.workTodo && data.workTasks.length === 0) missing.push('Aufgaben');
+            
+            if (missing.length > 0) {
+                alert(`Bitte folgende Pflichtfelder ausfüllen:\n${missing.join(', ')}`);
                 return false;
             }
             return true;
         }
         
         async function saveOrderToDatabase(order) {
-            await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    action: 'save',
-                    order
-                })
-            });
+            console.log('Speichere Auftrag in Database:', order);
+            
+            // Versuche Google Sheets API
+            try {
+                console.log('Sende zu Google Sheets...');
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'save',
+                        order: order
+                    })
+                });
+                
+                console.log('Response Status:', response.status);
+                const result = await response.text();
+                console.log('Response Text:', result);
+                
+                // Versuche JSON zu parsen
+                try {
+                    const jsonResult = JSON.parse(result);
+                    console.log('Google Sheets Response:', jsonResult);
+                    if (jsonResult.success) {
+                        console.log('✅ Erfolgreich in Google Sheets gespeichert');
+                        saveToLocalStorage(order); // Backup in LocalStorage
+                        return true;
+                    }
+                } catch (parseError) {
+                    console.warn('⚠️ Response ist kein JSON, aber Speichern könnte funktioniert haben');
+                    saveToLocalStorage(order); // Backup in LocalStorage
+                    return true;
+                }
+                
+            } catch (error) {
+                console.error('❌ Fehler bei Google Sheets:', error);
+                console.log('Speichere nur lokal als Backup...');
+                saveToLocalStorage(order);
+                return false;
+            }
+        }
+        
+        function saveToLocalStorage(order) {
+            let orders = JSON.parse(localStorage.getItem('ibgOrdersDatabase')) || [];
+            const index = orders.findIndex(o => o.id === order.id);
+            
+            if (index >= 0) {
+                orders[index] = order;
+                console.log('Lokal aktualisiert:', order.id);
+            } else {
+                orders.push(order);
+                console.log('Lokal hinzugefügt:', order.id);
+            }
+            
+            localStorage.setItem('ibgOrdersDatabase', JSON.stringify(orders));
+            console.log('LocalStorage gespeichert:', orders.length, 'Aufträge');
         }
         
         async function loadOrdersList() {
-            const res = await fetch(API_URL + '?action=list');
-            ordersDatabase = await res.json();
-            renderOrdersTable(ordersDatabase);
+            console.log('Lade Auftragsliste...');
+            
+            // Versuche zuerst von Google Sheets
+            try {
+                console.log('Hole Daten von Google Sheets...');
+                const response = await fetch(API_URL + '?action=list');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const text = await response.text();
+                console.log('Raw Response von Google Sheets:', text.substring(0, 300));
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON Parse Fehler:', parseError);
+                    throw new Error('Ungültige Antwort von Google Sheets');
+                }
+                
+                if (Array.isArray(data)) {
+                    ordersDatabase = data;
+                    console.log(`✅ ${data.length} Aufträge von Google Sheets geladen`);
+                    renderOrdersTable(ordersDatabase);
+                    
+                    // Synchronisiere mit LocalStorage
+                    localStorage.setItem('ibgOrdersDatabase', JSON.stringify(data));
+                    return;
+                } else {
+                    console.error('Daten sind kein Array:', data);
+                    throw new Error('Ungültiges Datenformat');
+                }
+                
+            } catch (error) {
+                console.error('Fehler beim Laden von Google Sheets:', error);
+                console.log('Lade aus LocalStorage als Fallback...');
+                
+                // Fallback zu LocalStorage
+                const localData = localStorage.getItem('ibgOrdersDatabase');
+                if (localData) {
+                    try {
+                        ordersDatabase = JSON.parse(localData);
+                        console.log(`${ordersDatabase.length} Aufträge aus LocalStorage geladen`);
+                        renderOrdersTable(ordersDatabase);
+                    } catch (e) {
+                        console.error('Fehler beim Parsen von LocalStorage:', e);
+                        ordersDatabase = [];
+                        renderOrdersTable(ordersDatabase);
+                    }
+                } else {
+                    console.log('Keine Daten in LocalStorage');
+                    ordersDatabase = [];
+                    renderOrdersTable(ordersDatabase);
+                }
+            }
         }
         
         function renderOrdersTable(orders) {
             const ordersBody = document.getElementById('orders-body');
             const emptyState = document.getElementById('empty-orders');
             
-            console.log('Rendere Tabelle mit', orders.length, 'Aufträgen');
+            console.log(`Rendere Tabelle mit ${orders.length} Aufträgen`);
+            
+            if (!Array.isArray(orders)) {
+                console.error('orders ist kein Array:', orders);
+                orders = [];
+            }
             
             if (orders.length === 0) {
                 ordersBody.innerHTML = '';
@@ -808,8 +995,6 @@
             ordersBody.innerHTML = '';
             
             orders.forEach(order => {
-                console.log('Rendere Auftrag:', order.vorgang, 'Tasks:', order.workTasks?.length || 0);
-                
                 // Fortschritt berechnen
                 let progressPercent = 0;
                 let progressText = 'Keine Aufgaben';
@@ -818,6 +1003,11 @@
                     const total = order.workTasks.length;
                     progressPercent = Math.round((completed / total) * 100);
                     progressText = `${completed}/${total} Aufgaben`;
+                } else if (order.workTodo) {
+                    const tasks = order.workTodo.split('\n').filter(t => t.trim());
+                    if (tasks.length > 0) {
+                        progressText = `${tasks.length} Aufgaben (ungeprüft)`;
+                    }
                 }
                 
                 // Status-Kommentar
@@ -834,10 +1024,10 @@
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="font-weight: bold; color: var(--primary-blue);">${order.vorgang}</td>
-                    <td>${order.customer}</td>
-                    <td>${new Date(order.entryDate).toLocaleDateString('de-DE')}</td>
-                    <td>${order.subject}</td>
+                    <td style="font-weight: bold; color: var(--primary-blue);">${order.vorgang || 'N/A'}</td>
+                    <td>${order.customer || 'N/A'}</td>
+                    <td>${order.entryDate ? new Date(order.entryDate).toLocaleDateString('de-DE') : 'N/A'}</td>
+                    <td>${order.subject || 'N/A'}</td>
                     <td>
                         <div class="progress-bar-container">
                             <div class="progress-bar-fill" style="width: ${progressPercent}%">
@@ -888,37 +1078,62 @@
         }
         
         window.updateOrderStatus = async function(orderId, statusType, isChecked) {
+            console.log('Update Status:', { orderId, statusType, isChecked });
+            
             const order = ordersDatabase.find(o => o.id == orderId);
-            if (!order) return;
+            if (!order) {
+                console.error('Auftrag nicht gefunden:', orderId);
+                alert('Auftrag nicht gefunden!');
+                return;
+            }
 
+            // Update lokal
+            if (!order.status) order.status = {};
             order.status[statusType] = isChecked;
+            
+            console.log('Aktualisierter Auftrag:', order);
+            
+            // Speichern
             await saveOrderToDatabase(order);
-            await loadOrdersList();
+            
+            // Nach dem Speichern neu laden
+            setTimeout(async () => {
+                await loadOrdersList();
+            }, 500);
         };
-                       
-
-
-
+        
         window.editOrder = function(id) {
             console.log('Bearbeite Auftrag:', id);
             const order = ordersDatabase.find(o => o.id === id);
-            if (!order) return;
+            if (!order) {
+                alert('Auftrag nicht gefunden!');
+                return;
+            }
             
             // Setze die Order ID
             document.getElementById('order-id').value = order.id;
             
-            document.getElementById('vorgang').value = order.vorgang;
-            document.getElementById('customer').value = order.customer;
-            document.getElementById('entry-date').value = order.entryDate;
-            document.getElementById('subject').value = order.subject;
+            // Fülle Formular
+            document.getElementById('vorgang').value = order.vorgang || '';
+            document.getElementById('customer').value = order.customer || '';
+            document.getElementById('entry-date').value = order.entryDate || '';
+            document.getElementById('subject').value = order.subject || '';
             document.getElementById('serial-number').value = order.serialNumber || '';
-            document.getElementById('name').value = order.name;
-            document.getElementById('hours').value = order.hours;
-            document.getElementById('error-description').value = order.errorDescription;
-            document.getElementById('work-todo').value = order.workTodo;
+            document.getElementById('name').value = order.name || '';
+            document.getElementById('hours').value = order.hours || '';
+            document.getElementById('error-description').value = order.errorDescription || '';
+            
+            // Aufgaben
+            if (order.workTasks && order.workTasks.length > 0) {
+                const taskText = order.workTasks.map(t => t.task).join('\n');
+                document.getElementById('work-todo').value = taskText;
+            } else {
+                document.getElementById('work-todo').value = order.workTodo || '';
+            }
             
             generateTaskCheckboxes();
             
+            // Setze Checkboxen
             if (order.workTasks) {
                 setTimeout(() => {
                     order.workTasks.forEach((t, i) => {
@@ -933,15 +1148,16 @@
                 }, 100);
             }
             
+            // Ersatzteile
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
             if (order.parts && order.parts.length > 0) {
                 order.parts.forEach(part => {
                     const row = tbody.insertRow();
                     row.innerHTML = `
-                        <td><input type="text" value="${part.articleNumber}"></td>
-                        <td><input type="text" value="${part.description}"></td>
-                        <td><input type="text" value="${part.quantity}"></td>
+                        <td><input type="text" value="${part.articleNumber || ''}"></td>
+                        <td><input type="text" value="${part.description || ''}"></td>
+                        <td><input type="text" value="${part.quantity || ''}"></td>
                     `;
                 });
             } else {
@@ -949,27 +1165,49 @@
                 row.innerHTML = '<td><input type="text"></td><td><input type="text"></td><td><input type="text"></td>';
             }
             
+            // Zurück zum Formular
             document.getElementById('orders-container').style.display = 'none';
             document.getElementById('main-container').style.display = 'block';
+            
+            // Nach oben scrollen
+            window.scrollTo(0, 0);
+            
+            console.log('Formular gefüllt für Auftrag:', order.vorgang);
         };
         
         window.deleteOrder = async function(id) {
-            if (!confirm('Wirklich löschen?')) return;
+            if (!confirm('Wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.')) return;
 
-            await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'delete',
-                    id
-                })
-            });
-
+            console.log('Lösche Auftrag:', id);
+            
+            // Versuche Google Sheets
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'delete',
+                        id: id
+                    })
+                });
+                console.log('Delete Response:', response.status);
+            } catch (error) {
+                console.error('Fehler beim Löschen in Google Sheets:', error);
+            }
+            
+            // Löschen aus LocalStorage
+            let localOrders = JSON.parse(localStorage.getItem('ibgOrdersDatabase')) || [];
+            localOrders = localOrders.filter(o => o.id != id);
+            localStorage.setItem('ibgOrdersDatabase', JSON.stringify(localOrders));
+            
+            // UI aktualisieren
             await loadOrdersList();
+            
+            alert('Auftrag gelöscht!');
         };
-
         
         function resetForm() {
+            console.log('Formular wird zurückgesetzt');
             document.getElementById('order-id').value = '';
             document.getElementById('customer').value = '';
             document.getElementById('subject').value = '';
@@ -980,9 +1218,14 @@
             document.getElementById('work-todo').value = '';
             document.getElementById('work-tasks-container').style.display = 'none';
             document.getElementById('table-body').innerHTML = '<tr><td><input type="text"></td><td><input type="text"></td><td><input type="text"></td></tr>';
+            
+            calculateNextVorgangNumber();
+            generateVorgangNumber();
         }
         
         async function generatePDF(orderData) {
+            console.log('Erstelle PDF für:', orderData.vorgang);
+            
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             
@@ -1078,11 +1321,28 @@
                 
                 const fileName = `${orderData.vorgang}-${orderData.customer}.pdf`.replace(/[^a-zA-Z0-9\-_\.]/g, '_');
                 doc.save(fileName);
+                console.log('PDF gespeichert als:', fileName);
             } catch (error) {
                 console.error('PDF-Fehler:', error);
                 alert('Fehler beim Erstellen des PDFs.');
             }
         }
+        
+        // Debug-Hilfe
+        console.log('IBG Repair Tool Script geladen');
+        console.log('API URL:', API_URL);
+        console.log('Anleitung: Drücken Sie Strg+D für Debug-Info');
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'd') {
+                console.log('=== DEBUG INFORMATIONEN ===');
+                console.log('API URL:', API_URL);
+                console.log('Orders in Memory:', ordersDatabase.length);
+                console.log('LocalStorage:', localStorage.getItem('ibgOrdersDatabase'));
+                console.log('Current Vorgang Number:', currentVorgangNumber);
+                testConnection();
+            }
+        });
     </script>
 </body>
 </html>
