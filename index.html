@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reparaturauftrag - IBG HydroTech</title>
-    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css)">
-    <script src="[https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js](https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js)"></script>
-    <script src="[https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js](https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js)"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root {
@@ -395,6 +395,7 @@
         </header>
         
         <div class="content">
+            <!-- Wichtig: Hier wird die ID für den Edit-Modus gespeichert -->
             <input type="hidden" id="order-id">
             
             <section class="section">
@@ -544,10 +545,9 @@
     </div>
 
     <script>
-        // --- GOOGLE SHEETS CONFIGURATION ---
-        // Füge hier deine Google Apps Script URL ein:
+        // --- KONFIGURATION ---
+        // Hier muss deine SCRIPT_URL von Google Apps Script stehen
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxngv6vt3H4LdXKCKexvx59eycpYQAY98Bmfra4Ugbr6bENc9a7FyHo7AQEonmn2lHv3Q/exec'; 
-        // -----------------------------------
 
         let ordersDatabase = JSON.parse(localStorage.getItem('ibgOrdersDatabase')) || [];
         const currentYear = new Date().getFullYear();
@@ -557,11 +557,11 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('entry-date').value = today;
             
-            // Erst lokal initialisieren, dann Cloud laden
+            // Nummerngenerierung
             calculateNextVorgangNumber();
             generateVorgangNumber();
             
-            // Versuche Cloud-Daten zu laden
+            // Cloud Sync
             loadOrdersFromCloud();
             
             document.getElementById('add-row-btn').addEventListener('click', function() {
@@ -579,14 +579,10 @@
                 const data = collectOrderData();
                 if (!validateOrderData(data)) return;
                 
-                const isUpdate = document.getElementById('order-id').value !== '';
+                const isUpdate = !!document.getElementById('order-id').value;
                 saveOrderToDatabase(data);
                 
-                if (isUpdate) {
-                    alert('Auftrag wurde gespeichert! (Sync läuft im Hintergrund)');
-                } else {
-                    alert('Auftrag wurde angelegt! (Sync läuft im Hintergrund)');
-                }
+                alert(isUpdate ? 'Auftrag wurde aktualisiert!' : 'Auftrag wurde angelegt!');
                 
                 resetForm();
                 document.getElementById('entry-date').value = today;
@@ -599,9 +595,7 @@
                 if (!validateOrderData(data)) return;
                 
                 saveOrderToDatabase(data);
-                
                 await generatePDF(data);
-                
                 alert('Auftrag gespeichert und PDF erstellt!');
                 
                 resetForm();
@@ -624,14 +618,14 @@
             });
             
             document.getElementById('reset-btn').addEventListener('click', function() {
-                if (confirm('Zurücksetzen?')) {
+                if (confirm('Eingaben wirklich löschen?')) {
                     resetForm();
                     document.getElementById('entry-date').value = today;
                     generateVorgangNumber();
                 }
             });
             
-            // Live column filtering
+            // Spaltenfilter
             document.addEventListener('input', function(e) {
                 if (!e.target.classList.contains('col-filter')) return;
                 let filtered = [...ordersDatabase];
@@ -652,7 +646,7 @@
             });
         });
 
-        // --- CLOUD SYNC FUNCTIONS ---
+        // --- CLOUD SYNC ---
         async function loadOrdersFromCloud() {
             if (!SCRIPT_URL) return;
             try {
@@ -660,20 +654,17 @@
                 const cloudData = await response.json();
                 if (Array.isArray(cloudData)) {
                     ordersDatabase = cloudData;
-                    // Auch lokal updaten, damit es beim nächsten Mal schneller geht
                     localStorage.setItem('ibgOrdersDatabase', JSON.stringify(ordersDatabase));
-                    // Wenn wir in der Listenansicht sind, Liste neu rendern
                     if (document.getElementById('orders-container').style.display !== 'none') {
                         loadOrdersList();
                     }
-                    // Nummer neu berechnen basierend auf neuen Daten
                     calculateNextVorgangNumber();
                     if(!document.getElementById('order-id').value) {
                         generateVorgangNumber();
                     }
                 }
             } catch (e) {
-                console.error("Fehler beim Laden aus der Cloud:", e);
+                console.error("Cloud-Ladefehler:", e);
             }
         }
 
@@ -682,13 +673,12 @@
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Wichtig für Simple Requests
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
             } catch (e) {
-                console.error("Fehler beim Senden in die Cloud:", e);
-                alert("Achtung: Konnte nicht in die Cloud speichern. Bitte Internetverbindung prüfen.");
+                console.error("Cloud-Sync-Fehler:", e);
             }
         }
         
@@ -702,7 +692,8 @@
         }
         
         function generateVorgangNumber() {
-            document.getElementById('vorgang').value = currentYear + '-' + currentVorgangNumber.toString().padStart(3, '0');
+            const el = document.getElementById('vorgang');
+            if (el) el.value = currentYear + '-' + currentVorgangNumber.toString().padStart(3, '0');
         }
         
         function generateTaskCheckboxes() {
@@ -716,42 +707,32 @@
             }
             
             const tasks = text.split('\n').filter(line => line.trim());
-            if (tasks.length === 0) {
-                container.style.display = 'none';
-                return;
-            }
-            
             container.style.display = 'block';
             checklist.innerHTML = '';
             
             tasks.forEach((task, index) => {
                 const div = document.createElement('div');
                 div.className = 'task-checkbox-item';
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `task-${index}`;
-                
-                const label = document.createElement('label');
-                label.htmlFor = `task-${index}`;
-                label.textContent = task.trim();
-                
-                checkbox.addEventListener('change', function() {
+                div.innerHTML = `
+                    <input type="checkbox" id="task-${index}">
+                    <label for="task-${index}">${task.trim()}</label>
+                `;
+                div.querySelector('input').addEventListener('change', function() {
                     div.classList.toggle('completed', this.checked);
                 });
-                
-                div.appendChild(checkbox);
-                div.appendChild(label);
                 checklist.appendChild(div);
             });
         }
         
         function collectOrderData() {
             const orderId = document.getElementById('order-id').value;
-            const existingOrder = orderId ? ordersDatabase.find(o => o.id == orderId) : null;
+            // Wichtig: ID als Zahl oder String konsistent behandeln
+            const cleanId = orderId ? (isNaN(orderId) ? orderId : parseInt(orderId)) : Date.now();
+            
+            const existingOrder = ordersDatabase.find(o => String(o.id) === String(cleanId));
             
             const data = {
-                id: orderId ? parseInt(orderId) : Date.now(),
+                id: cleanId,
                 vorgang: document.getElementById('vorgang').value.trim(),
                 customer: document.getElementById('customer').value.trim(),
                 entryDate: document.getElementById('entry-date').value,
@@ -765,34 +746,26 @@
                 parts: []
             };
             
-            // Aufgaben sammeln
             document.querySelectorAll('#tasks-checklist input[type="checkbox"]').forEach(cb => {
                 const label = document.querySelector(`label[for="${cb.id}"]`);
                 if (label) {
-                    data.workTasks.push({
-                        task: label.textContent,
-                        completed: cb.checked
-                    });
+                    data.workTasks.push({ task: label.textContent, completed: cb.checked });
                 }
             });
             
-            // Status - bestehenden Status übernehmen oder neu initialisieren
             data.status = existingOrder?.status || {
                 auftragErteilt: false,
                 reparaturAbgeschlossen: false,
                 versendetAnKunden: false
             };
             
-            // Auto-Status: Reparatur abgeschlossen bei 100% Fortschritt
             if (data.workTasks.length > 0) {
-                const allCompleted = data.workTasks.every(task => task.completed);
-                data.status.reparaturAbgeschlossen = allCompleted;
+                data.status.reparaturAbgeschlossen = data.workTasks.every(t => t.completed);
             }
             
-            // Ersatzteile sammeln
             document.querySelectorAll('#table-body tr').forEach(row => {
                 const inputs = row.querySelectorAll('input');
-                if (inputs[0].value || inputs[1].value || inputs[2].value) {
+                if (inputs[0]?.value || inputs[1]?.value) {
                     data.parts.push({
                         articleNumber: inputs[0].value.trim(),
                         description: inputs[1].value.trim(),
@@ -806,37 +779,25 @@
         
         function validateOrderData(data) {
             if (!data.vorgang || !data.customer || !data.subject || !data.name) {
-                alert('Bitte alle Pflichtfelder ausfüllen!');
+                alert('Bitte alle Pflichtfelder (Vorgang, Kunde, Betrifft, Name) ausfüllen!');
                 return false;
             }
             return true;
         }
         
         function saveOrderToDatabase(data) {
-            const existingIndex = ordersDatabase.findIndex(o => o.id === data.id);
-            
+            const existingIndex = ordersDatabase.findIndex(o => String(o.id) === String(data.id));
             if (existingIndex !== -1) {
-                // Auftrag aktualisieren
                 ordersDatabase[existingIndex] = data;
             } else {
-                // Neuen Auftrag hinzufügen
                 ordersDatabase.push(data);
             }
-            
-            // 1. Lokal speichern (für sofortiges Feedback)
             localStorage.setItem('ibgOrdersDatabase', JSON.stringify(ordersDatabase));
-            
-            // 2. An Google Sheets senden
             syncOrderToCloud(data);
         }
         
         function loadOrdersList() {
-            // Lade was wir haben (Lokal oder bereits gesynct)
             ordersDatabase = JSON.parse(localStorage.getItem('ibgOrdersDatabase')) || [];
-            
-            // Versuche Update aus Cloud im Hintergrund
-            loadOrdersFromCloud();
-            
             renderOrdersTable(ordersDatabase);
         }
         
@@ -853,30 +814,15 @@
             emptyState.style.display = 'none';
             ordersBody.innerHTML = '';
             
-            // Sortieren nach Datum (Neuste zuerst)
             const sortedOrders = [...orders].sort((a, b) => new Date(b.entryDate) - new Date(a.entryDate));
             
             sortedOrders.forEach(order => {
-                // Fortschritt berechnen
                 let progressPercent = 0;
                 let progressText = 'Keine Aufgaben';
-                if (order.workTasks && order.workTasks.length > 0) {
-                    const completed = order.workTasks.filter(t => t.completed).length;
-                    const total = order.workTasks.length;
-                    progressPercent = Math.round((completed / total) * 100);
-                    progressText = `${completed}/${total} Aufgaben`;
-                }
-                
-                // Status-Kommentar
-                let statusComment = '';
-                if (order.status?.versendetAnKunden) {
-                    statusComment = '<div style="color: #45B7AF; font-weight: 700; margin-top: 8px;">✓ Versendet</div>';
-                } else if (order.status?.reparaturAbgeschlossen) {
-                    statusComment = '<div style="color: #4ECDC4; font-weight: 700; margin-top: 8px;">📦 Bereit zum Versand</div>';
-                } else if (order.status?.auftragErteilt) {
-                    statusComment = '<div style="color: #FF6B6B; font-weight: 700; margin-top: 8px;">🔧 In Arbeit</div>';
-                } else {
-                    statusComment = '<div style="color: #999; font-style: italic; margin-top: 8px;">Noch nicht begonnen</div>';
+                if (order.workTasks?.length > 0) {
+                    const comp = order.workTasks.filter(t => t.completed).length;
+                    progressPercent = Math.round((comp / order.workTasks.length) * 100);
+                    progressText = `${comp}/${order.workTasks.length} erledigt`;
                 }
                 
                 const tr = document.createElement('tr');
@@ -887,133 +833,98 @@
                     <td>${order.subject}</td>
                     <td>
                         <div class="progress-bar-container">
-                            <div class="progress-bar-fill" style="width: ${progressPercent}%">
-                                ${progressPercent > 0 ? progressPercent + '%' : ''}
-                            </div>
+                            <div class="progress-bar-fill" style="width: ${progressPercent}%">${progressPercent}%</div>
                         </div>
                         <div class="progress-text">${progressText}</div>
                     </td>
                     <td>
                         <div class="status-checkboxes">
-                            <label class="status-checkbox-label">
-                                <input type="checkbox" ${order.status?.auftragErteilt ? 'checked' : ''} 
-                                    onchange="updateOrderStatus(${order.id}, 'auftragErteilt', this.checked)">
-                                <span style="color: #FF6B6B;">Auftrag erteilt</span>
-                            </label>
-                            <label class="status-checkbox-label">
-                                <input type="checkbox" ${order.status?.reparaturAbgeschlossen ? 'checked' : ''}
-                                    onchange="updateOrderStatus(${order.id}, 'reparaturAbgeschlossen', this.checked)">
-                                <span style="color: #4ECDC4;">Reparatur abgeschlossen</span>
-                            </label>
-                            <label class="status-checkbox-label">
-                                <input type="checkbox" ${order.status?.versendetAnKunden ? 'checked' : ''}
-                                    onchange="updateOrderStatus(${order.id}, 'versendetAnKunden', this.checked)">
-                                <span style="color: #45B7AF;">Versendet</span>
-                            </label>
+                            <label class="status-checkbox-label"><input type="checkbox" ${order.status?.auftragErteilt ? 'checked' : ''} onchange="updateOrderStatus('${order.id}', 'auftragErteilt', this.checked)"> <span>Auftrag erteilt</span></label>
+                            <label class="status-checkbox-label"><input type="checkbox" ${order.status?.reparaturAbgeschlossen ? 'checked' : ''} onchange="updateOrderStatus('${order.id}', 'reparaturAbgeschlossen', this.checked)"> <span>Abgeschlossen</span></label>
+                            <label class="status-checkbox-label"><input type="checkbox" ${order.status?.versendetAnKunden ? 'checked' : ''} onchange="updateOrderStatus('${order.id}', 'versendetAnKunden', this.checked)"> <span>Versendet</span></label>
                         </div>
-                        ${statusComment}
                     </td>
                     <td>
-                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                            <button class="edit-btn" onclick="editOrder(${order.id})">Bearbeiten</button>
-                            <button class="delete-btn" onclick="deleteOrder(${order.id})">Löschen</button>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="edit-btn" onclick="editOrder('${order.id}')">Laden</button>
+                            <button class="delete-btn" onclick="deleteOrder('${order.id}')">X</button>
                         </div>
                     </td>
                 `;
-                
-                // Farbliche Markierung
-                if (progressPercent === 100) {
-                    tr.style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
-                    tr.style.borderLeft = '5px solid #28a745';
-                } else if (progressPercent > 0) {
-                    tr.style.backgroundColor = 'rgba(255, 193, 7, 0.1)';
-                    tr.style.borderLeft = '5px solid #ffc107';
-                }
-                
                 ordersBody.appendChild(tr);
             });
         }
         
-        window.updateOrderStatus = function(orderId, statusType, isChecked) {
-            const orderIndex = ordersDatabase.findIndex(order => order.id == orderId);
-            if (orderIndex !== -1) {
-                if (!ordersDatabase[orderIndex].status) {
-                    ordersDatabase[orderIndex].status = {
-                        auftragErteilt: false,
-                        reparaturAbgeschlossen: false,
-                        versendetAnKunden: false
-                    };
-                }
-                ordersDatabase[orderIndex].status[statusType] = isChecked;
-                
-                // Speichern (Lokal + Cloud)
+        window.updateOrderStatus = function(orderId, type, checked) {
+            const idx = ordersDatabase.findIndex(o => String(o.id) === String(orderId));
+            if (idx !== -1) {
+                if(!ordersDatabase[idx].status) ordersDatabase[idx].status = {};
+                ordersDatabase[idx].status[type] = checked;
                 localStorage.setItem('ibgOrdersDatabase', JSON.stringify(ordersDatabase));
-                syncOrderToCloud(ordersDatabase[orderIndex]);
-                
+                syncOrderToCloud(ordersDatabase[idx]);
                 loadOrdersList();
             }
         };
         
         window.editOrder = function(id) {
-            const order = ordersDatabase.find(o => o.id === id);
-            if (!order) return;
-            
-            // Setze die Order ID
-            document.getElementById('order-id').value = order.id;
-            
-            document.getElementById('vorgang').value = order.vorgang;
-            document.getElementById('customer').value = order.customer;
-            document.getElementById('entry-date').value = order.entryDate;
-            document.getElementById('subject').value = order.subject;
-            document.getElementById('serial-number').value = order.serialNumber || '';
-            document.getElementById('name').value = order.name;
-            document.getElementById('hours').value = order.hours;
-            document.getElementById('error-description').value = order.errorDescription;
-            document.getElementById('work-todo').value = order.workTodo;
-            
-            generateTaskCheckboxes();
-            
-            if (order.workTasks) {
-                setTimeout(() => {
-                    order.workTasks.forEach((t, i) => {
-                        const cb = document.getElementById(`task-${i}`);
-                        if (cb) {
-                            cb.checked = t.completed;
-                            if (t.completed) {
-                                cb.closest('.task-checkbox-item').classList.add('completed');
-                            }
-                        }
-                    });
-                }, 100);
+            // Sicherstellen, dass die ID als String verglichen wird
+            const order = ordersDatabase.find(o => String(o.id) === String(id));
+            if (!order) {
+                alert("Auftrag nicht gefunden!");
+                return;
             }
             
+            // Formular befüllen
+            document.getElementById('order-id').value = order.id;
+            document.getElementById('vorgang').value = order.vorgang || '';
+            document.getElementById('customer').value = order.customer || '';
+            document.getElementById('entry-date').value = order.entryDate || '';
+            document.getElementById('subject').value = order.subject || '';
+            document.getElementById('serial-number').value = order.serialNumber || '';
+            document.getElementById('name').value = order.name || '';
+            document.getElementById('hours').value = order.hours || 0;
+            document.getElementById('error-description').value = order.errorDescription || '';
+            document.getElementById('work-todo').value = order.workTodo || '';
+            
+            // Checklisten generieren
+            generateTaskCheckboxes();
+            
+            // Checkbox-Status wiederherstellen
+            if (order.workTasks) {
+                order.workTasks.forEach((t, i) => {
+                    const cb = document.getElementById(`task-${i}`);
+                    if (cb) {
+                        cb.checked = t.completed;
+                        if (t.completed) cb.closest('.task-checkbox-item').classList.add('completed');
+                    }
+                });
+            }
+            
+            // Ersatzteile befüllen
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
             if (order.parts && order.parts.length > 0) {
                 order.parts.forEach(part => {
                     const row = tbody.insertRow();
                     row.innerHTML = `
-                        <td><input type="text" value="${part.articleNumber}"></td>
-                        <td><input type="text" value="${part.description}"></td>
-                        <td><input type="text" value="${part.quantity}"></td>
+                        <td><input type="text" value="${part.articleNumber || ''}"></td>
+                        <td><input type="text" value="${part.description || ''}"></td>
+                        <td><input type="text" value="${part.quantity || ''}"></td>
                     `;
                 });
             } else {
-                const row = tbody.insertRow();
-                row.innerHTML = '<td><input type="text"></td><td><input type="text"></td><td><input type="text"></td>';
+                tbody.innerHTML = '<tr><td><input type="text"></td><td><input type="text"></td><td><input type="text"></td></tr>';
             }
             
+            // Ansicht wechseln
             document.getElementById('orders-container').style.display = 'none';
             document.getElementById('main-container').style.display = 'block';
+            window.scrollTo(0,0);
         };
         
         window.deleteOrder = function(id) {
-            if (confirm('Wirklich löschen?')) {
-                // Info: Echtes Löschen in der Cloud ist hier nicht implementiert (nur lokal).
-                // Die Cloud behält den Eintrag. Das nächste Mal wenn du lädst, könnte er wieder da sein, 
-                // wenn wir nicht auch eine Lösch-Funktion im Apps Script bauen.
-                // Für diese einfache Version belassen wir es beim lokalen Löschen.
-                ordersDatabase = ordersDatabase.filter(o => o.id !== id);
+            if (confirm('Auftrag lokal löschen?')) {
+                ordersDatabase = ordersDatabase.filter(o => String(o.id) !== String(id));
                 localStorage.setItem('ibgOrdersDatabase', JSON.stringify(ordersDatabase));
                 loadOrdersList();
             }
@@ -1021,6 +932,7 @@
         
         function resetForm() {
             document.getElementById('order-id').value = '';
+            document.getElementById('vorgang').value = '';
             document.getElementById('customer').value = '';
             document.getElementById('subject').value = '';
             document.getElementById('serial-number').value = '';
@@ -1035,106 +947,27 @@
         async function generatePDF(orderData) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
-            
-            let checklistHTML = '';
-            if (orderData.workTasks && orderData.workTasks.length > 0) {
-                checklistHTML = '<div style="margin-bottom: 20px;"><h3 style="color: #005293; border-bottom: 2px solid #e37222; padding-bottom: 5px; margin-bottom: 10px;">Aufgaben-Checkliste</h3><div style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #e0e0e0;">';
-                orderData.workTasks.forEach(task => {
-                    const checkmark = task.completed ? '✓' : '☐';
-                    const style = task.completed ? 'text-decoration: line-through; color: #999;' : '';
-                    checklistHTML += `<div style="padding: 5px 0; ${style}"><span style="font-weight: bold; color: ${task.completed ? '#28a745' : '#333'}; margin-right: 8px;">${checkmark}</span> ${task.task}</div>`;
-                });
-                checklistHTML += '</div></div>';
-            }
-            
             const pdfContent = `
-                <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto;">
-                    <div style="text-align: center; margin-bottom: 20px; border-bottom: 3px solid #005293; padding-bottom: 20px;">
-                        <h1 style="color: #005293; margin-bottom: 5px; font-size: 24px;">IBG HYDROTECH REPARATURAUFTRAG</h1>
-                        <p style="color: #666; font-size: 14px;">Reparatur- und Wartungsdokumentation</p>
-                    </div>
-                    
-                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #e37222;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <tr><td style="padding: 5px 0; width: 30%;"><strong>Vorgang:</strong></td><td style="padding: 5px 0;">${orderData.vorgang}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Kunde:</strong></td><td style="padding: 5px 0;">${orderData.customer}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Datum:</strong></td><td style="padding: 5px 0;">${new Date(orderData.entryDate).toLocaleDateString('de-DE')}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Betrifft:</strong></td><td style="padding: 5px 0;">${orderData.subject}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Seriennummer:</strong></td><td style="padding: 5px 0;">${orderData.serialNumber || '-'}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Verantwortlich:</strong></td><td style="padding: 5px 0;">${orderData.name}</td></tr>
-                            <tr><td style="padding: 5px 0;"><strong>Stunden:</strong></td><td style="padding: 5px 0;">${orderData.hours.toFixed(1)} h</td></tr>
-                        </table>
-                    </div>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="color: #005293; border-bottom: 2px solid #e37222; padding-bottom: 5px; margin-bottom: 10px;">Fehlerbeschreibung</h3>
-                        <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #e0e0e0;">${orderData.errorDescription.replace(/\n/g, '<br>')}</div>
-                    </div>
-                    
-                    ${checklistHTML}
-                    
-                    ${orderData.parts && orderData.parts.length > 0 ? `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="color: #005293; border-bottom: 2px solid #e37222; padding-bottom: 5px; margin-bottom: 10px;">Ersatzteile</h3>
-                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e0e0e0;">
-                            <thead style="background: #005293; color: white;">
-                                <tr>
-                                    <th style="padding: 10px; text-align: left;">Artikelnummer</th>
-                                    <th style="padding: 10px; text-align: left;">Bezeichnung</th>
-                                    <th style="padding: 10px; text-align: left;">Anzahl</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${orderData.parts.map(part => `
-                                    <tr>
-                                        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0;">${part.articleNumber || ''}</td>
-                                        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0;">${part.description || ''}</td>
-                                        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0;">${part.quantity || ''}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    ` : ''}
-                    
-                    <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #666;">
-                        <p>© IBG HydroTech GmbH - Siemensstraße 39 - D63755 Alzenau</p>
-                        <p>Erstellt: ${new Date().toLocaleDateString('de-DE')} ${new Date().toLocaleTimeString('de-DE')}</p>
-                    </div>
+                <div style="font-family: Arial, sans-serif; padding: 30px;">
+                    <h1 style="color: #005293;">IBG HYDROTECH - REPARATURPROTOKOLL</h1>
+                    <hr>
+                    <p><strong>Vorgang:</strong> ${orderData.vorgang}</p>
+                    <p><strong>Kunde:</strong> ${orderData.customer}</p>
+                    <p><strong>Datum:</strong> ${orderData.entryDate}</p>
+                    <p><strong>Betrifft:</strong> ${orderData.subject}</p>
+                    <p><strong>Bearbeiter:</strong> ${orderData.name}</p>
+                    <h3>Fehlerbeschreibung:</h3>
+                    <p>${orderData.errorDescription}</p>
                 </div>
             `;
-            
-            const tempElement = document.createElement('div');
-            tempElement.style.position = 'absolute';
-            tempElement.style.left = '-9999px';
-            tempElement.style.width = '800px';
-            tempElement.innerHTML = pdfContent;
-            document.body.appendChild(tempElement);
-            
-            try {
-                const canvas = await html2canvas(tempElement, {
-                    scale: 2,
-                    useCORS: true,
-                    logging: false
-                });
-                
-                document.body.removeChild(tempElement);
-                
-                const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                const imgWidth = 190;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                
-                doc.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
-                
-                const fileName = `${orderData.vorgang}-${orderData.customer}.pdf`.replace(/[^a-zA-Z0-9\-_\.]/g, '_');
-                doc.save(fileName);
-            } catch (error) {
-                console.error('PDF-Fehler:', error);
-                alert('Fehler beim Erstellen des PDFs.');
-            }
+            const temp = document.createElement('div');
+            temp.innerHTML = pdfContent;
+            document.body.appendChild(temp);
+            const canvas = await html2canvas(temp);
+            document.body.removeChild(temp);
+            doc.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, 190, 0);
+            doc.save(`Reparatur_${orderData.vorgang}.pdf`);
         }
     </script>
 </body>
 </html>
-
-
