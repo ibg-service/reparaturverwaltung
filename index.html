@@ -829,7 +829,7 @@
                 tr.innerHTML = `
                     <td style="font-weight: bold; color: var(--primary-blue);">${order.vorgang}</td>
                     <td>${order.customer}</td>
-                    <td>${order.entryDate ? new Date(order.entryDate).toLocaleDateString('de-DE') : '-'}</td>
+                    <td>${order.entryDate ? new Date(order.entryDate).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric'}) : '-'}</td>
                     <td>${order.subject}</td>
                     <td>
                         <div class="progress-bar-container">
@@ -971,3 +971,4 @@
     </script>
 </body>
 </html>
+
