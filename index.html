@@ -947,28 +947,106 @@
         async function generatePDF(orderData) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
+            
+            let checklistHTML = '';
+            if (orderData.workTasks && orderData.workTasks.length > 0) {
+                checklistHTML = '<div style="margin-bottom: 20px;"><h3 style="color: #005293; border-bottom: 2px solid #e37222; padding-bottom: 5px; margin-bottom: 10px;">Aufgaben-Checkliste</h3><div style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #e0e0e0;">';
+                orderData.workTasks.forEach(task => {
+                    const checkmark = task.completed ? '✓' : '☐';
+                    const style = task.completed ? 'text-decoration: line-through; color: #999;' : '';
+                    checklistHTML += `<div style="padding: 5px 0; ${style}"><span style="font-weight: bold; color: ${task.completed ? '#28a745' : '#333'}; margin-right: 8px;">${checkmark}</span> ${task.task}</div>`;
+                });
+                checklistHTML += '</div></div>';
+            }
+            
             const pdfContent = `
-                <div style="font-family: Arial, sans-serif; padding: 30px;">
-                    <h1 style="color: #005293;">IBG HYDROTECH - REPARATURPROTOKOLL</h1>
-                    <hr>
-                    <p><strong>Vorgang:</strong> ${orderData.vorgang}</p>
-                    <p><strong>Kunde:</strong> ${orderData.customer}</p>
-                    <p><strong>Datum:</strong> ${orderData.entryDate}</p>
-                    <p><strong>Betrifft:</strong> ${orderData.subject}</p>
-                    <p><strong>Bearbeiter:</strong> ${orderData.name}</p>
-                    <h3>Fehlerbeschreibung:</h3>
-                    <p>${orderData.errorDescription}</p>
+                <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto;">
+                    <div style="text-align: center; margin-bottom: 20px; border-bottom: 3px solid #005293; padding-bottom: 20px;">
+                        <h1 style="color: #005293; margin-bottom: 5px; font-size: 24px;">IBG HYDROTECH REPARATURAUFTRAG</h1>
+                        <p style="color: #666; font-size: 14px;">Reparatur- und Wartungsdokumentation</p>
+                    </div>
+                    
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #e37222;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr><td style="padding: 5px 0; width: 30%;"><strong>Vorgang:</strong></td><td style="padding: 5px 0;">${orderData.vorgang}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Kunde:</strong></td><td style="padding: 5px 0;">${orderData.customer}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Datum:</strong></td><td style="padding: 5px 0;">${new Date(orderData.entryDate).toLocaleDateString('de-DE')}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Betrifft:</strong></td><td style="padding: 5px 0;">${orderData.subject}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Seriennummer:</strong></td><td style="padding: 5px 0;">${orderData.serialNumber || '-'}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Verantwortlich:</strong></td><td style="padding: 5px 0;">${orderData.name}</td></tr>
+                            <tr><td style="padding: 5px 0;"><strong>Stunden:</strong></td><td style="padding: 5px 0;">${orderData.hours.toFixed(1)} h</td></tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #005293; border-bottom: 2px solid #e37222; padding-bottom: 5px; margin-bottom: 10px;">Fehlerbeschreibung</h3>
+                        <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #e0e0e0;">${orderData.errorDescription.replace(/\n/g, '<br>')}</div>
+                    </div>
+                    
+                    ${checklistHTML}
+                    
+                    ${orderData.parts && orderData.parts.length > 0 ? `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #005293; border-bottom: 2px solid #e37222; padding-bottom: 5px; margin-bottom: 10px;">Ersatzteile</h3>
+                        <table style="width: 100%; border-collapse: collapse; border: 1px solid #e0e0e0;">
+                            <thead style="background: #005293; color: white;">
+                                <tr>
+                                    <th style="padding: 10px; text-align: left;">Artikelnummer</th>
+                                    <th style="padding: 10px; text-align: left;">Bezeichnung</th>
+                                    <th style="padding: 10px; text-align: left;">Anzahl</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${orderData.parts.map(part => `
+                                    <tr>
+                                        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0;">${part.articleNumber || ''}</td>
+                                        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0;">${part.description || ''}</td>
+                                        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0;">${part.quantity || ''}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #666;">
+                        <p>© IBG HydroTech GmbH - Siemensstraße 39 - D63755 Alzenau</p>
+                        <p>Erstellt: ${new Date().toLocaleDateString('de-DE')} ${new Date().toLocaleTimeString('de-DE')}</p>
+                    </div>
                 </div>
             `;
-            const temp = document.createElement('div');
-            temp.innerHTML = pdfContent;
-            document.body.appendChild(temp);
-            const canvas = await html2canvas(temp);
-            document.body.removeChild(temp);
-            doc.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, 190, 0);
-            doc.save(`Reparatur_${orderData.vorgang}.pdf`);
+            
+            const tempElement = document.createElement('div');
+            tempElement.style.position = 'absolute';
+            tempElement.style.left = '-9999px';
+            tempElement.style.width = '800px';
+            tempElement.innerHTML = pdfContent;
+            document.body.appendChild(tempElement);
+            
+            try {
+                const canvas = await html2canvas(tempElement, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                });
+                
+                document.body.removeChild(tempElement);
+                
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                const imgWidth = 190;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                doc.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
+                
+                const fileName = `${orderData.vorgang}-${orderData.customer}.pdf`.replace(/[^a-zA-Z0-9\-_\.]/g, '_');
+                doc.save(fileName);
+            } catch (error) {
+                console.error('PDF-Fehler:', error);
+                alert('Fehler beim Erstellen des PDFs.');
+            }
         }
     </script>
 </body>
 </html>
+
 
