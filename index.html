@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBG HydroTech - Startseite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #005293;
+            --secondary-blue: #007bc0;
+            --accent-orange: #e37222;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #333;
+            --text-gray: #666;
+            --white: #ffffff;
+            --success-green: #28a745;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f0f2f5 0%, #e6e9f0 100%);
+            color: var(--dark-gray);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(to right, var(--primary-blue), var(--secondary-blue));
+            color: var(--white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+            margin-right: 15px;
+        }
+
+        h1 {
+            font-size: 2.3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 2rem;
+        }
+
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .nav-card {
+            border: 1px solid var(--medium-gray);
+            border-radius: 12px;
+            padding: 1.8rem;
+            background: var(--white);
+            text-align: center;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+        }
+
+        .nav-card i {
+            font-size: 2.2rem;
+            color: var(--accent-orange);
+            margin-bottom: 0.8rem;
+        }
+
+        .nav-card h2 {
+            color: var(--primary-blue);
+            margin-bottom: 0.5rem;
+            font-size: 1.4rem;
+        }
+
+        .nav-card p {
+            color: var(--text-gray);
+            margin-bottom: 1.2rem;
+        }
+
+        button,
+        .button-link {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 180px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, var(--accent-orange), #f17a35);
+            color: white;
+            box-shadow: 0 4px 10px rgba(227, 114, 34, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(227, 114, 34, 0.4);
+        }
+
+        .btn-info {
+            background: linear-gradient(to right, var(--secondary-blue), #0099e6);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(to right, var(--success-green), #34ce57);
+            color: white;
+        }
+
+        .section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--medium-gray);
+        }
+
+        .section-title {
+            color: var(--primary-blue);
+            font-size: 1.6rem;
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--accent-orange);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: var(--accent-orange);
+        }
+
+        .recent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .recent-card {
+            border: 1px solid var(--medium-gray);
+            border-radius: 12px;
+            padding: 1rem 1.2rem;
+            background: var(--white);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+        }
+
+        .recent-card h3 {
+            color: var(--primary-blue);
+            font-size: 1.1rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .recent-card p {
+            color: var(--text-gray);
+            margin-bottom: 0.2rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-gray);
+            padding: 1rem;
+            border: 1px dashed var(--medium-gray);
+            border-radius: 12px;
+            background: var(--light-gray);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-tools"></i></div>
+                <div>
+                    <h1>IBG HYDROTECH</h1>
+                    <p class="subtitle">Reparatur- und Wartungsdokumentation</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="nav-grid">
+                <div class="nav-card">
+                    <i class="fas fa-file-signature"></i>
+                    <h2>Neuer Auftrag</h2>
+                    <p>Reparaturauftrag anlegen und bearbeiten.</p>
+                    <a class="button-link btn-primary" href="neuer_auftrag.html">Zum Auftrag</a>
+                </div>
+
+                <div class="nav-card">
+                    <i class="fas fa-list-check"></i>
+                    <h2>Auftragsliste</h2>
+                    <p>Vorhandene Aufträge anzeigen und verwalten.</p>
+                    <a class="button-link btn-info" href="auftragsliste.html">Zur Liste</a>
+                </div>
+
+                <div class="nav-card">
+                    <i class="fas fa-clipboard-check"></i>
+                    <h2>Abnahmeprotokoll</h2>
+                    <p>Protokoll für die Abnahme vorbereiten.</p>
+                    <a class="button-link btn-success" href="abnahmeprotokoll.html">Zum Protokoll</a>
+                </div>
+            </div>
+
+            <section class="section">
+                <h2 class="section-title"><i class="fas fa-history"></i> Meine letzten Aufträge</h2>
+                <div id="recent-orders" class="recent-grid"></div>
+                <div id="recent-orders-empty" class="empty-state" style="display: none;">Keine Aufträge vorhanden.</div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title"><i class="fas fa-clipboard-check"></i> Meine letzten Abnahmeprotokolle</h2>
+                <div id="recent-protocols" class="recent-grid"></div>
+                <div id="recent-protocols-empty" class="empty-state" style="display: none;">Keine Abnahmeprotokolle vorhanden.</div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxngv6vt3H4LdXKCKexvx59eycpYQAY98Bmfra4Ugbr6bENc9a7FyHo7AQEonmn2lHv3Q/exec';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRecentData();
+        });
+
+        async function loadRecentData() {
+            const localOrders = JSON.parse(localStorage.getItem('ibgOrdersDatabase')) || [];
+            const localProtocols = JSON.parse(localStorage.getItem('ibgAcceptanceDatabase')) || [];
+
+            let cloudData = [];
+            try {
+                const response = await fetch(SCRIPT_URL);
+                cloudData = await response.json();
+            } catch (error) {
+                console.error('Cloud-Ladefehler:', error);
+            }
+
+            const cloudOrders = Array.isArray(cloudData)
+                ? cloudData.filter(item => !isProtocolEntry(item))
+                : [];
+            const cloudProtocols = Array.isArray(cloudData)
+                ? cloudData.filter(item => isProtocolEntry(item))
+                : [];
+
+            const recentOrders = getRecentEntries(mergeEntries(localOrders, cloudOrders), 3, 'entryDate');
+            const recentProtocols = getRecentEntries(mergeEntries(localProtocols, cloudProtocols), 3, 'protocolDate');
+
+            renderRecentOrders(recentOrders);
+            renderRecentProtocols(recentProtocols);
+        }
+
+        function isProtocolEntry(entry) {
+            const type = (entry?.documentType || entry?.type || entry?.recordType || '').toString().toLowerCase();
+            return type.includes('abnahme');
+        }
+
+        function mergeEntries(localEntries, cloudEntries) {
+            const map = new Map();
+            [...localEntries, ...cloudEntries].forEach(entry => {
+                const key = entry?.id || `${entry?.vorgang || ''}-${entry?.customer || ''}-${entry?.entryDate || ''}`;
+                if (key) {
+                    map.set(key, entry);
+                }
+            });
+            return Array.from(map.values());
+        }
+
+        function getRecentEntries(entries, limit, dateField) {
+            return [...entries]
+                .sort((a, b) => new Date(b?.[dateField] || b?.entryDate || 0) - new Date(a?.[dateField] || a?.entryDate || 0))
+                .slice(0, limit);
+        }
+
+        function renderRecentOrders(orders) {
+            const container = document.getElementById('recent-orders');
+            const empty = document.getElementById('recent-orders-empty');
+            container.innerHTML = '';
+
+            if (!orders.length) {
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            orders.forEach(order => {
+                const card = document.createElement('div');
+                card.className = 'recent-card';
+                card.innerHTML = `
+                    <h3>${order.vorgang || 'Auftrag'}</h3>
+                    <p><strong>Kunde:</strong> ${order.customer || '-'}</p>
+                    <p><strong>Datum:</strong> ${formatDate(order.entryDate)}</p>
+                    <p><strong>Betrifft:</strong> ${order.subject || '-'}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderRecentProtocols(protocols) {
+            const container = document.getElementById('recent-protocols');
+            const empty = document.getElementById('recent-protocols-empty');
+            container.innerHTML = '';
+
+            if (!protocols.length) {
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            protocols.forEach(protocol => {
+                const card = document.createElement('div');
+                card.className = 'recent-card';
+                card.innerHTML = `
+                    <h3>${protocol.title || protocol.vorgang || 'Abnahmeprotokoll'}</h3>
+                    <p><strong>Kunde:</strong> ${protocol.customer || '-'}</p>
+                    <p><strong>Datum:</strong> ${formatDate(protocol.protocolDate || protocol.entryDate)}</p>
+                    <p><strong>Hinweis:</strong> ${protocol.note || protocol.subject || '-'}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+    </script>
+</body>
+</html>
